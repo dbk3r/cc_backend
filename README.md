@@ -1,4 +1,4 @@
-# BRC - encoder/render backend
+# CodingCloud - encoder/render backend
 
 #Run
 perl encoder.pl
