@@ -17,7 +17,7 @@ $host = hostname();
 if ($os eq "MSWin32")
 {
 	$ipaddr = inet_ntoa(scalar(gethostbyname($name)) || 'localhost');
-	
+
 }
 if ($os eq "linux")
 {
