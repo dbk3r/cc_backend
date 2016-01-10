@@ -34,6 +34,7 @@ $mysql_user = $cfg->param('mysql_user');
 $mysql_password = $cfg->param('mysql_password');
 $mysql_db = $cfg->param('mysql_db');
 $encoder_table = $cfg->param('encoder_table');
+$jobs_table = $cfg->param('jobs_table');
 $max_encoding_slots = $cfg->param('max_encoding_slots');
 $ffmpeg_bin = $cfg->param('ffmpeg');
 $ffmbc_bin = $cfg->param('ffmbc');
@@ -49,11 +50,13 @@ $num_cpus = Sys::CpuAffinity::getNumCpus();
 $dbh = DBI->connect('DBI:mysql:'.$mysql_db.';host='.$mysql_host, $mysql_user, $mysql_password) || die "Could not connect to database: $DBI::errstr";
 $dbh->do("INSERT INTO ".$encoder_table." set encoder_ip='".$ipaddr."', encoder_max_slots='".$max_encoding_slots."', encoder_used_slots='0', encoder_cpus='".$num_cpus."'");
 
-if (-e $ffmpeg_bin) { $dbh->do("update ".$encoder_table." set encoder_ffmpeg='1'") ;}
-if (-e $ffmbc_bin) { $dbh->do("update ".$encoder_table." set encoder_ffmbc='1'") ;}
-if (-e $blender_bin) { $dbh->do("update ".$encoder_table." set encoder_blender='1'") ;}
+if (-e $ffmpeg_bin) { $dbh->do("update ".$encoder_table." set encoder_ffmpeg='1'") ;} else {  print "can\'t find ffmpeg, disable ffmpeg-encoding \n";}
+if (-e $ffmbc_bin) { $dbh->do("update ".$encoder_table." set encoder_ffmbc='1'") ;} else {  print "can\'t find ffmbc, disable ffmbc-encoding \n";}
+if (-e $blender_bin) { $dbh->do("update ".$encoder_table." set encoder_blender='1'") ;} else {  print "can\'t find blender, disable blender rendering \n";}
 
 $dbh->disconnect();
+
+print "encoder-unit is running \n";
 
 $slot_thread = 1;
 while (1) {
@@ -82,7 +85,7 @@ sub runloop {
 	
 	if ($av_slots > 0 && $ip eq $ipaddr) 
 	{
-		# read brc_jobs
+		# read cc_jobs
 		read_jobs_db();
 		
 		if ($jobcount > 0)
@@ -90,11 +93,10 @@ sub runloop {
 		
 			# used_slots + 1
 			$new_used_slots = $used_slots + 1;
-			$dbh->do("UPDATE brc_encoder set encoder_used_slots='".$new_used_slots."'");
-					
-			
+			$dbh->do("UPDATE ".$encoder_table." set encoder_used_slots='".$new_used_slots."'");
+						
 			# set jobsstate
-			$dbh->do("UPDATE brc_jobs set state='1' WHERE id='".$job_id."'");
+			$dbh->do("UPDATE ".$jobs_table." set state='1' WHERE id='".$job_id."'");
 			
 			# render job
 			render_job();
@@ -103,7 +105,7 @@ sub runloop {
 			# used_slots - 1
 			read_encoder_db();
 			$new_used_slots = $used_slots - 1;
-			$dbh->do("UPDATE brc_encoder set encoder_used_slots='".$new_used_slots."'");
+			$dbh->do("UPDATE ".$encoder_table." set encoder_used_slots='".$new_used_slots."'");
 			
 		}
 	}	
@@ -112,7 +114,7 @@ sub runloop {
 sub render_job {
 	
 	if ($workflow eq "blender")
-	{
+	{mysqli_close($con);mysqli_close($con);
 		#its a blender file
 		
 		@cmd = ($blender_bin, "-b", $sourcefile, "-o" , $output_folder , "-F" , $output_format , "-s" , $startframe , "-e" , $endframe , "-a");
@@ -158,7 +160,7 @@ sub render_job {
 
 sub read_jobs_db {
 	
-	$jobresult = $dbh->prepare("SELECT * FROM brc_jobs WHERE state='0' ORDER BY id,prio LIMIT 1 ");
+	$jobresult = $dbh->prepare("SELECT * FROM ".$jobs_table." WHERE state='0' ORDER BY id,prio LIMIT 1 ");
 	$jobresult->execute();
 	$jobcount = $jobresult->rows;
 	if ($jobcount > 0)
@@ -180,7 +182,7 @@ sub read_jobs_db {
 
 sub read_encoder_db {
 
-	$result = $dbh->prepare("SELECT * FROM brc_encoder ORDER BY encoder_used_slots LIMIT 1");
+	$result = $dbh->prepare("SELECT * FROM " .$encoder_table." ORDER BY encoder_used_slots LIMIT 1");
 	$result->execute();
 	while (my $row = $result->fetchrow_hashref) {
 		$max_slots= $row->{encoder_max_slots};
