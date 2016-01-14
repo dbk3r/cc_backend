@@ -10,9 +10,11 @@ use Parallel::ForkManager;
 use FindBin;
 use IPC::Run qw(start pump);
 
+
+do 'functions.pl';
 $os = $Config{osname};
 $SIG{INT} = \&interrupt;
-$host = hostname();
+#$host = hostname();
 
 if ($os eq "MSWin32")
 {
@@ -39,6 +41,9 @@ $max_encoding_slots = $cfg->param('max_encoding_slots');
 $ffmpeg_bin = $cfg->param('ffmpeg');
 $ffmbc_bin = $cfg->param('ffmbc');
 $blender_bin = $cfg->param('blender');
+$mediainfo_bin = $cfg->param('mediainfo');
+$bmxtranswrap_bin = $cfg->param('bmxtranswrapr');
+$curl_bin = $cfg->param('curl');
 $content_dir = $cfg->param('content_dir');
 
 
@@ -93,10 +98,13 @@ sub runloop {
 		
 			# used_slots + 1
 			$new_used_slots = $used_slots + 1;
+
 			$dbh->do("UPDATE ".$encoder_table." set encoder_used_slots='".$new_used_slots."'");
 						
 			# set jobsstate
 			$dbh->do("UPDATE ".$jobs_table." set state='1' WHERE id='".$job_id."'");
+			
+			# set jobsstate			
 			
 			# render job
 			render_job();
@@ -105,82 +113,68 @@ sub runloop {
 			# used_slots - 1
 			read_encoder_db();
 			$new_used_slots = $used_slots - 1;
+
 			$dbh->do("UPDATE ".$encoder_table." set encoder_used_slots='".$new_used_slots."'");
 			
 		}
 	}	
+	#$dbh->disconnect();
 }
 
-sub render_job {
-	
-	if ($workflow eq "blender")
-	{mysqli_close($con);mysqli_close($con);
+sub render_job {	
+
+	mysqli_close($con);mysqli_close($con);
+
+	if ($content_type eq "blender")
+	{
+
 		#its a blender file
-		
-		@cmd = ($blender_bin, "-b", $sourcefile, "-o" , $output_folder , "-F" , $output_format , "-s" , $startframe , "-e" , $endframe , "-a");
-		
-		
-		$harness = start \@cmd, \$in, \$out, \$out;		
-		$in = '';
-		
-		pump $harness while length $in;
-		
-		while(1){
-			pump $harness until $out =~ s/(.+)\n$//gm ;
-			#pump $harness until $out =~ /^\s*Fra/;
-			$full_line = $1;
-			$remaining = $full_line;
-			if ($remaining =~ /^\s*Fra/)
-			{
-				if (index($remaining, "Path Tracing Tile") > 1) 
-				{
-					print substr($remaining,index($remaining, "Path Tracing Tile") + 18,7) . "\r";
-				}
-			}				
-			
-			last if ("Blender quit" eq $full_line);
-			
-		}
-		
+		$cmd = $blender_bin ." -b " .  $content_dir . $uuid . "/" . $job_filename . " " . $job_cmd;
+		render($job_id, $cmd);	
 	}	
-	elsif ($workflow eq "video_from_sequence")
+
+	elsif ($content_type eq "sequence")
 	{			
 		$start_number = "-start_number ". $startframe;
 		$input_sequence = $sourcefile . "/%04d.png";
 		$cmd = $ffmpeg_bin . " -r 25 -i ". $input_sequence . " ". $start_number. " -vcodec libx264 -b:v 4000k  ". $output_folder . "/" . $scene_name .".mp4";
 		system($cmd);		
 	}
-	elsif ($workflow eq "transcode")
+
+	elsif ($content_type eq "video" || $content_type eq "audio")
 	{
-		$cmd = $ffmpeg_bin . " -i ". $sourcefile . " -vcodec libx264 -b:v 4000k  ". $output_folder . "/" . $scene_name .".mp4";
-		system($cmd);
+		$cmd = $ffmpeg_bin . " " .  $job_cmd . " " . $content_dir.$job_uuid."/" . $job_filename;
+		transcode($job_id,$cmd);
 	}
 		
 }
 
 sub read_jobs_db {
 	
+
 	$jobresult = $dbh->prepare("SELECT * FROM ".$jobs_table." WHERE state='0' ORDER BY id,prio LIMIT 1 ");
+
+
 	$jobresult->execute();
 	$jobcount = $jobresult->rows;
 	if ($jobcount > 0)
 	{
 		while (my $jobrow = $jobresult->fetchrow_hashref) {
-			$job_id= $jobrow->{id};
-			$sourcefile= $jobrow->{sourcefile};
-			$output_folder= $jobrow->{output_folder};
-			$output_format= $jobrow->{output_format};
-			$startframe= $jobrow->{startframe};
-			$endframe= $jobrow->{endframe};
-			$project_name= $jobrow->{project_name};
-			$scene_name= $jobrow->{scene_name};	
-			$workflow = $jobrow->{workflow};
+			$job_id = $jobrow->{id};
+			$job_cmd = $jobrow->{cmd};	
+			$content_type = $jobrow->{content_type};	
+			$job_prio = $jobrow->{prio};
+			$job_filename = $jobrow->{filename};
+			$job_uuid = $jobrow->{uuid};
 		}
 	}
 	
 }
 
+
+
 sub read_encoder_db {
+
 
 	$result = $dbh->prepare("SELECT * FROM " .$encoder_table." ORDER BY encoder_used_slots LIMIT 1");
 	$result->execute();
