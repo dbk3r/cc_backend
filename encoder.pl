@@ -38,6 +38,9 @@ $max_encoding_slots = $cfg->param('max_encoding_slots');
 $ffmpeg_bin = $cfg->param('ffmpeg');
 $ffmbc_bin = $cfg->param('ffmbc');
 $blender_bin = $cfg->param('blender');
+$mediainfo_bin = $cfg->param('mediainfo');
+$bmxtranswrap_bin = $cfg->param('bmxtranswrapr');
+$curl_bin = $cfg->param('curl');
 $content_dir = $cfg->param('content_dir');
 
 
@@ -90,11 +93,11 @@ sub runloop {
 		
 			# used_slots + 1
 			$new_used_slots = $used_slots + 1;
-			$dbh->do("UPDATE brc_encoder set encoder_used_slots='".$new_used_slots."'");
+			$dbh->do("UPDATE cc_encoder set encoder_used_slots='".$new_used_slots."'");
 					
 			
 			# set jobsstate
-			$dbh->do("UPDATE brc_jobs set state='1' WHERE id='".$job_id."'");
+			$dbh->do("UPDATE cc_jobs set state='1' WHERE id='".$job_id."'");
 			
 			# render job
 			render_job();
@@ -103,7 +106,7 @@ sub runloop {
 			# used_slots - 1
 			read_encoder_db();
 			$new_used_slots = $used_slots - 1;
-			$dbh->do("UPDATE brc_encoder set encoder_used_slots='".$new_used_slots."'");
+			$dbh->do("UPDATE cc_encoder set encoder_used_slots='".$new_used_slots."'");
 			
 		}
 	}	
@@ -158,7 +161,7 @@ sub render_job {
 
 sub read_jobs_db {
 	
-	$jobresult = $dbh->prepare("SELECT * FROM brc_jobs WHERE state='0' ORDER BY id,prio LIMIT 1 ");
+	$jobresult = $dbh->prepare("SELECT * FROM cc_jobs WHERE state='0' ORDER BY id,prio LIMIT 1 ");
 	$jobresult->execute();
 	$jobcount = $jobresult->rows;
 	if ($jobcount > 0)
@@ -180,7 +183,7 @@ sub read_jobs_db {
 
 sub read_encoder_db {
 
-	$result = $dbh->prepare("SELECT * FROM brc_encoder ORDER BY encoder_used_slots LIMIT 1");
+	$result = $dbh->prepare("SELECT * FROM cc_encoder ORDER BY encoder_used_slots LIMIT 1");
 	$result->execute();
 	while (my $row = $result->fetchrow_hashref) {
 		$max_slots= $row->{encoder_max_slots};
