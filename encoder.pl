@@ -37,6 +37,8 @@ $mysql_db = $cfg->param('mysql_db');
 
 $encoder_table = $cfg->param('encoder_table');
 $jobs_table = $cfg->param('jobs_table');
+$content_table = "cc_content";
+
 $max_encoding_slots = $cfg->param('max_encoding_slots');
 
 $ffmpeg_bin = $cfg->param('ffmpeg');
@@ -104,6 +106,14 @@ sub runloop {
 	#$dbh->disconnect();
 }
 
+sub deldb {
+	my $uuid = shift;
+	$retval = true;
+	$dbh->do("DELETE FROM ".$content_table." WHERE id='".$uuid."'");
+	return $retval;
+}
+
+
 sub set_job_state {
 	my $jid = shift;
 	my $state = shift;
@@ -165,9 +175,16 @@ sub render_job {
 	{
 		
 	}
-	elsif ($job_type eq "delete")
+	elsif ($job_type eq "delContent")
 	{
 		if(rmtree($content_dir.$uuid))
+		{ set_job_state($job_id,2); }
+                else
+                { set_job_state($job_id.3); }	
+	}
+	elsif ($job_type eq "deldbContent")
+	{
+		if(deldb($uuid))
 		{ set_job_state($job_id,2); }
                 else
                 { set_job_state($job_id.3); }	
