@@ -125,7 +125,7 @@ sub render_job {
 
 	mysqli_close($con);mysqli_close($con);
 
-	if ($content_type eq "blender")
+	if ($job_type eq "blender")
 	{
 
 		#its a blender file
@@ -133,7 +133,7 @@ sub render_job {
 		render($job_id, $cmd);	
 	}	
 
-	elsif ($content_type eq "sequence")
+	elsif ($job_type eq "sequence")
 	{			
 		$start_number = "-start_number ". $startframe;
 		$input_sequence = $sourcefile . "/%04d.png";
@@ -141,10 +141,24 @@ sub render_job {
 		system($cmd);		
 	}
 
-	elsif ($content_type eq "video" || $content_type eq "audio")
+	elsif ($job_type eq "transcode")
 	{
-		$cmd = $ffmpeg_bin . " " .  $job_cmd . " " . $content_dir.$job_uuid."/" . $job_filename;
+		if($coder_bin eq "ffmpeg") { $coder=$ffmpeg_bin; }
+		if($coder_bin eq "ffmbc") { $coder=$ffmbc_bin; }
+		$cmd = $coder . " " .  $job_cmd . " " . $content_dir.$job_uuid."/" . $job_filename;
 		transcode($job_id,$cmd);
+	}
+	elsif ($job_type eq "copy")
+	{
+		
+	}
+	elsif ($job_type eq "move")
+	{
+		
+	}
+	elsif ($job_type eq "delete")
+	{
+		
 	}
 		
 }
@@ -163,6 +177,8 @@ sub read_jobs_db {
 			$job_id = $jobrow->{id};
 			$job_cmd = $jobrow->{cmd};	
 			$content_type = $jobrow->{content_type};	
+			$job_type = $jobrow->{job_type};
+			$coder_bin = $jobrow->{coder_bin};		
 			$job_prio = $jobrow->{prio};
 			$job_filename = $jobrow->{filename};
 			$job_uuid = $jobrow->{uuid};
