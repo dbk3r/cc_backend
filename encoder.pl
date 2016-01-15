@@ -35,9 +35,11 @@ $mysql_host = $cfg->param('mysql_host');
 $mysql_user = $cfg->param('mysql_user');
 $mysql_password = $cfg->param('mysql_password');
 $mysql_db = $cfg->param('mysql_db');
+
 $encoder_table = $cfg->param('encoder_table');
 $jobs_table = $cfg->param('jobs_table');
 $max_encoding_slots = $cfg->param('max_encoding_slots');
+
 $ffmpeg_bin = $cfg->param('ffmpeg');
 $ffmbc_bin = $cfg->param('ffmbc');
 $blender_bin = $cfg->param('blender');
