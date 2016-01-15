@@ -1,4 +1,3 @@
-
 use Config::Simple;
 use Config;
 use Sys::CpuAffinity;
@@ -9,9 +8,9 @@ use DBI;
 use Parallel::ForkManager;  
 use FindBin;
 use IPC::Run qw(start pump);
+use File::Path qw( rmtree );
 
-
-do 'functions.pl';
+do 'functions.pl';
 $os = $Config{osname};
 $SIG{INT} = \&interrupt;
 #$host = hostname();
@@ -97,45 +96,45 @@ sub runloop {
 		
 		if ($jobcount > 0)
 		{
-		
-			# used_slots + 1
-			$new_used_slots = $used_slots + 1;
-
-			$dbh->do("UPDATE ".$encoder_table." set encoder_used_slots='".$new_used_slots."'");
-						
-			# set jobsstate
-			$dbh->do("UPDATE ".$jobs_table." set state='1' WHERE id='".$job_id."'");
-			
-			# set jobsstate			
-			
 			# render job
 			render_job();
 			sleep 2;
-			
-			# used_slots - 1
-			read_encoder_db();
-			$new_used_slots = $used_slots - 1;
-
-			$dbh->do("UPDATE ".$encoder_table." set encoder_used_slots='".$new_used_slots."'");
-			
 		}
 	}	
 	#$dbh->disconnect();
 }
 
+sub set_job_state {
+	my $jid = shift;
+	my $state = shift;
+	read_encoder_db();
+	if ($state == 1)
+	{
+                $new_used_slots = $used_slots + 1;
+	}
+	else
+        {
+                $new_used_slots = $used_slots - 1;
+        }
+	$dbh->do("UPDATE ".$jobs_table." set state='1' WHERE id='".$jid."'");
+	$dbh->do("UPDATE ".$encoder_table." set encoder_used_slots='".$new_used_slots."' where encoder_ip='".$ipaddr."'");
+}
+
 sub render_job {	
 
-	mysqli_close($con);mysqli_close($con);
-
-	if ($job_type eq "blender")
+	if ($job_type eq "blender" && -e $blender_bin)
 	{
 
-		#its a blender file
+		# its a blender file
 		$cmd = $blender_bin ." -b " .  $content_dir . $uuid . "/" . $job_filename . " " . $job_cmd;
-		render($job_id, $cmd);	
+		set_job_state($job_id,1);
+		if (render($job_id, $cmd))
+		{ set_job_state($job_id,2); }
+		else
+		{ set_job_state($job_id.3); }	
 	}	
 
-	elsif ($job_type eq "sequence")
+	elsif ($job_type eq "sequence" && -e $ffmpeg_bin)
 	{			
 		$start_number = "-start_number ". $startframe;
 		$input_sequence = $sourcefile . "/%04d.png";
@@ -148,8 +147,16 @@ sub render_job {
 		if($coder_bin eq "ffmpeg") { $coder=$ffmpeg_bin; }
 		if($coder_bin eq "ffmbc") { $coder=$ffmbc_bin; }
 		$cmd = $coder . " " .  $job_cmd . " " . $content_dir.$job_uuid."/" . $job_filename;
-		transcode($job_id,$cmd);
+		if (transcode($job_id,$cmd,$job_filename))
+		{ set_job_state($job_id,2); }
+                else
+                { set_job_state($job_id.3); }
 	}
+	
+	elsif ($job_type eq "ftp")
+        {
+                
+        }
 	elsif ($job_type eq "copy")
 	{
 		
@@ -160,7 +167,10 @@ sub render_job {
 	}
 	elsif ($job_type eq "delete")
 	{
-		
+		if(rmtree($content_dir.$uuid))
+		{ set_job_state($job_id,2); }
+                else
+                { set_job_state($job_id.3); }	
 	}
 		
 }

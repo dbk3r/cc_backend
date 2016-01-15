@@ -1,14 +1,20 @@
 use IPC::Run qw( start pump );
 use Data::UUID;
+use File::stat;
 
-
+sub filesize {
+	my $file = shift
+	return stat($file)->size;
+}
 
 sub transcode {
 
-           my $jid = shift;
-           my $ff = shift; # transcode(job_id,"ffmpeg -i inputFile -vcodec libx264 outFile")
-           my @ffCMD = split(" ",$ff);
-           my ($in, $out, $err);
+        my $jid = shift;
+        my $ff = shift; # transcode(job_id,"ffmpeg -i inputFile -vcodec libx264 outFile")
+	my $outfile = shift;
+        my @ffCMD = split(" ",$ff);
+        my ($in, $out, $err);
+	$retval = true;
 
           my $harness = start \@ffCMD, \$in, \$out, \$err;
           pump $harness until ($err =~ m{Duration: (\d+:\d+:\d+\.\d+)}ms);
@@ -38,8 +44,12 @@ sub transcode {
           }
 
               finish $harness;
-              $job_state = $dbh->prepare("update convjobs set progress='',state='2' where id='$jid'");
-              $job_state->execute();
+	      if(filesize($outfile) > 0) {
+		$$retval = true;
+	      } else {
+		$retval = false;
+	      }
+	return $retval;
 }
 
 sub render {
@@ -48,7 +58,8 @@ sub render {
 	$cmd = shift;
 	my @blenderCMD = split(" ", $cmd);
 	my ($in, $out, $err);
-	
+	$retval = true;
+
 	my $harness = start \@blenderCMD, \$in, \$out, \$out;
 	$in = '';
 
@@ -73,7 +84,5 @@ sub render {
 
 	}
 	finish $harness;
-        $job_state = $dbh->prepare("update convjobs set progress='',state='2' where id='$jid'");
-        $job_state->execute();
-
+	return $retval;
 }
