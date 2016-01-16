@@ -109,8 +109,9 @@ sub runloop {
 sub deldb {
 	my $uuid = shift;
 	$retval = true;
-	$dbh->do("DELETE FROM ".$content_table." WHERE content_uuid='".$uuid."'");
-	$dbh->do("DELETE FROM ".$jobs_table." WHERE uuid='".$uuid."'");
+	$dbh->do("DELETE FROM ".$content_table." WHERE content_uuid='".$uuid."'");		
+	$dbh->do("DELETE FROM ".$jobs_table." WHERE (uuid='".$uuid."' and state<>0)");	
+	
 	return $retval;
 }
 
@@ -135,13 +136,13 @@ sub render_job {
 	
 	my $content_dir=shift;
 	my $uuid = shift;	
-
+	set_job_state($job_id,1);
 	if ($job_type eq "blender" && -e $blender_bin)
 	{
 
 		# its a blender file
 		$cmd = $blender_bin ." -b " .  $content_dir . $uuid . "/" . $job_filename . " " . $job_cmd;
-		set_job_state($job_id,1);
+		
 		if (render($job_id, $cmd))
 		{ set_job_state($job_id,2); }
 		else
@@ -164,7 +165,7 @@ sub render_job {
 		if (transcode($job_id,$cmd,$job_filename))
 		{ set_job_state($job_id,2); }
                 else
-                { set_job_state($job_id.3); }
+                { set_job_state($job_id,3); }
 	}
 	
 	elsif ($job_type eq "ftp")
@@ -188,6 +189,7 @@ sub render_job {
 		{ set_job_state($job_id,2); }
                 else
                 { set_job_state($job_id,3); }	
+                $dbh->do("DELETE FROM ".$jobs_table." WHERE (uuid='".$uuid."' and state<>0)");	
 	}
 	elsif ($job_type eq "delContentDB")
 	{
