@@ -72,7 +72,7 @@ while (1) {
 	$pm->start($slot_thread) and next;	
 	runloop($slot_thread);
 	$pm->finish($slot_thread);
-	sleep 3;
+	sleep 30;
 
 	if ($slot_thread < $max_encoding_slots)
 	{
@@ -99,7 +99,7 @@ sub runloop {
 		if ($jobcount > 0)
 		{
 			# render job
-			render_job();
+			render_job($content_dir,$job_uuid);
 			sleep 2;
 		}
 	}	
@@ -109,7 +109,8 @@ sub runloop {
 sub deldb {
 	my $uuid = shift;
 	$retval = true;
-	$dbh->do("DELETE FROM ".$content_table." WHERE id='".$uuid."'");
+	$dbh->do("DELETE FROM ".$content_table." WHERE content_uuid='".$uuid."'");
+	$dbh->do("DELETE FROM ".$jobs_table." WHERE uuid='".$uuid."'");
 	return $retval;
 }
 
@@ -126,11 +127,14 @@ sub set_job_state {
         {
                 $new_used_slots = $used_slots - 1;
         }
-	$dbh->do("UPDATE ".$jobs_table." set state='1' WHERE id='".$jid."'");
+	$dbh->do("UPDATE ".$jobs_table." set state='$state' WHERE id='".$jid."'");
 	$dbh->do("UPDATE ".$encoder_table." set encoder_used_slots='".$new_used_slots."' where encoder_ip='".$ipaddr."'");
 }
 
-sub render_job {	
+sub render_job {
+	
+	my $content_dir=shift;
+	my $uuid = shift;	
 
 	if ($job_type eq "blender" && -e $blender_bin)
 	{
@@ -177,17 +181,20 @@ sub render_job {
 	}
 	elsif ($job_type eq "delContent")
 	{
+		$del_file = $content_dir . $uuid;
+		print "del: ".$del_file ."\n";
+		
 		if(rmtree($content_dir.$uuid))
 		{ set_job_state($job_id,2); }
                 else
-                { set_job_state($job_id.3); }	
+                { set_job_state($job_id,3); }	
 	}
-	elsif ($job_type eq "deldbContent")
+	elsif ($job_type eq "delContentDB")
 	{
 		if(deldb($uuid))
 		{ set_job_state($job_id,2); }
                 else
-                { set_job_state($job_id.3); }	
+                { set_job_state($job_id,3); }	
 	}
 		
 }
