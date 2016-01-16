@@ -61,6 +61,7 @@ $dbh->do("INSERT INTO ".$encoder_table." set encoder_ip='".$ipaddr."', encoder_m
 if (-e $ffmpeg_bin) { $dbh->do("update ".$encoder_table." set encoder_ffmpeg='1'") ;} else {  print "can\'t find ffmpeg, disable ffmpeg-encoding \n";}
 if (-e $ffmbc_bin) { $dbh->do("update ".$encoder_table." set encoder_ffmbc='1'") ;} else {  print "can\'t find ffmbc, disable ffmbc-encoding \n";}
 if (-e $blender_bin) { $dbh->do("update ".$encoder_table." set encoder_blender='1'") ;} else {  print "can\'t find blender, disable blender rendering \n";}
+if (-e $mediainfo_bin) { $dbh->do("update ".$encoder_table." set encoder_mediainfo='1'") ;} else {  print "can\'t find mediainfo, disable media analyzer \n";}
 
 $dbh->disconnect();
 
@@ -161,8 +162,8 @@ sub render_job {
 	{
 		if($coder_bin eq "ffmpeg") { $coder=$ffmpeg_bin; }
 		if($coder_bin eq "ffmbc") { $coder=$ffmbc_bin; }
-		$cmd = $coder . " " .  $job_cmd . " " . $content_dir.$job_uuid."/" . $job_filename;
-		if (transcode($job_id,$cmd,$job_filename))
+		$cmd = $coder . " " .  $job_cmd . " " . $content_dir.$job_uuid."/" . $dest_filename;
+		if (transcode($job_id,$cmd,$dest_filename))
 		{ set_job_state($job_id,2); }
                 else
                 { set_job_state($job_id,3); }
@@ -180,6 +181,18 @@ sub render_job {
 	{
 		
 	}
+	elsif ($job_type eq "analyze")
+        {
+		if($ontent_type eq "Video")
+		{
+			analyze_video($src_filename);
+		}
+		if($content_type eq "Audio")
+		{
+			analyze_audio($src_filename);
+		}
+        }
+
 	elsif ($job_type eq "delContent")
 	{
 		$del_file = $content_dir . $uuid;
@@ -218,7 +231,8 @@ sub read_jobs_db {
 			$job_type = $jobrow->{job_type};
 			$coder_bin = $jobrow->{coder_bin};		
 			$job_prio = $jobrow->{prio};
-			$job_filename = $jobrow->{filename};
+			$src_filename = $jobrow->{src_filename};
+			$dest_filename = $jobrow->{dest_filename};
 			$job_uuid = $jobrow->{uuid};
 		}
 	}

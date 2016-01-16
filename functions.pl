@@ -7,6 +7,16 @@ sub filesize {
 	return stat($file)->size;
 }
 
+sub analyze_video {
+
+	my $filename=shift;
+}
+
+sub analyze_audio {
+
+	my $filename=shift;
+}
+
 sub transcode {
 
         my $jid = shift;
