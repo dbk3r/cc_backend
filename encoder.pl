@@ -80,7 +80,7 @@ sub runloop {
 	if ($av_slots > 0 && $ip eq $ipaddr) 
 	{
 		# read cc_jobs
-		read_jobs_db();
+		read_jobs_db($dbh);
 		
 		if ($jobcount > 0)
 		{
@@ -106,6 +106,7 @@ sub set_job_state {
 	my $jid = shift;
 	my $state = shift;
 	read_encoder_db();
+	print "used slots: $used_slots\n";
 	if ($state == 1)
 	{
                 $new_used_slots = $used_slots + 1;
@@ -170,8 +171,9 @@ sub render_job {
 	elsif ($job_type eq "genThumbnail" && -e $ffmpeg_bin)
         {
 		set_job_state($job_id,1);
-		if(genThumbnail($ffmpeg_bin, $content_dir, $uuid, $src_filename)==0)
+		if(genThumbnail($ffmpeg_bin, $content_dir, $uuid, $src_filename) == 0)
 		{
+			$dbh->do("UPDATE ".$content_table." set content_thumbnail='".$src_filename.".png' WHERE content_uuid='".$uuid."'");
 			set_job_state($job_id,2);
 		}
 		else
@@ -182,37 +184,38 @@ sub render_job {
 
 	elsif ($job_type eq "mediainfo" && -e $mediainfo_bin)
         {
-		if($ontent_type eq "Video")
+		if($content_type eq "Video")
 		{
 			set_job_state($job_id,1);
-			my $videoResults = video_info($mediainfo_bin, $content_dir, $uuid, $src_filename);
-			my $audioResults = audio_info($mediainfo_bin, $content_dir, $uuid, $src_filename);
-			my @vR = split(",",$videoReults);
+			my $videoResults = videoinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
+			my $audioResults = audioinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
+			my @vR = split(",",$videoResults);
 			my @aR = split(",",$audioResults);
 			if($vR[0] == 0)
 			{
-				$dbh->do("UPDATE ".$content_table." set content_duration='".$vR[2]."',content_videoCodec='". $vR[3] ."',videoBitrate='". $vR[4] ."',content_videoCodec='". $vR[3] ."' WHERE uuid='".$uuid."'");
+				print "UPDATE ".$content_table." set content_duration='".$vR[2]."',content_videoCodec='". $vR[3] ."',content_videoBitrate='". $vR[4] ."',content_videoCodec='". $vR[3] ."' WHERE content_uuid='".$uuid."'\n";
+				$dbh->do("UPDATE ".$content_table." set content_duration='".$vR[2]."',content_videoCodec='". $vR[3] ."',content_videoBitrate='". $vR[4] ."',content_videoCodec='". $vR[3] ."' WHERE content_uuid='".$uuid."'");
 				set_job_state($job_id,2);
 			}
 			else
                 	{
-				$dbh->do("UPDATE ".$content_table." set content_duration='unknown',content_videoCodec='unknown',videoBitrate='unknown',content_videoCodec='unknown' WHERE uuid='".$uuid."'");
+				$dbh->do("UPDATE ".$content_table." set content_duration='unknown',content_videoCodec='unknown',content_videoBitrate='unknown',content_videoCodec='unknown' WHERE content_uuid='".$uuid."'");
 				set_job_state($job_id,3);
 			}
 		}
 		if($content_type eq "Audio")
 		{
 			set_job_state($job_id,1);
-			my $audioResults = audio_info($mediainfo_bin, $content_dir, $uuid, $src_filename);
+			my $audioResults = audioinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
                         my @aR = split(",",$audioResults);
 			if($aR[0] == 0)
                         {
-                                $dbh->do("UPDATE ".$content_table." set content_audioCodec='". $vR[2] ."',content_audioSamplingrate='". $vR[4] ."',content_audioChannel='". $vR[3] ."' WHERE uuid='".$uuid."'");
+                                $dbh->do("UPDATE ".$content_table." set content_audioCodec='". $vR[2] ."',content_audioSamplingrate='". $vR[4] ."',content_audioChannel='". $vR[3] ."' WHERE content_uuid='".$uuid."'");
                                 set_job_state($job_id,2);
                         }
                         else
                         {
-                                $dbh->do("UPDATE ".$content_table." set content_audioCodec='unknown',content_audioSamplingrate='unknown',audioChannel='unknown' WHERE uuid='".$uuid."'");
+                                $dbh->do("UPDATE ".$content_table." set content_audioCodec='unknown',content_audioSamplingrate='unknown',audioChannel='unknown' WHERE content_uuid='".$uuid."'");
                                 set_job_state($job_id,3);
                         }
 
@@ -244,7 +247,7 @@ sub render_job {
 
 sub read_jobs_db {
 	
-	
+	my $dbh = shift;	
 	$jobresult = $dbh->prepare("SELECT * FROM ".$jobs_table." WHERE state='0' ORDER BY id,prio LIMIT 1 ");
 
 

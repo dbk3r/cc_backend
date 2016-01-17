@@ -58,8 +58,9 @@ sub genThumbnail {
 	my $uuid = shift;
 	my $src_filename = shift;
 
-	my $genCMD = "$ffmpeg_bin -i $content_dir$uuid/$src_filename -filter_complex scale=80:80 $content_dir$uuid/thumbnail.png";
-	my $genResult = System($genCMD);
+	my $genCMD = $ffmpeg_bin . " -y -i '". $content_dir.$uuid."/".$src_filename."' -vframes 1 -filter_complex 'scale=80:80' '". $content_dir.$uuid."/".$src_filename.".png'";
+	print "$genCMD\n";
+	my $genResult = system($genCMD);
 	return $genResult;
 }
 
