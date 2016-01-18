@@ -12,8 +12,8 @@ use File::Path qw( rmtree );
 use Cwd 'abs_path';
 use lib abs_path.'/modules';
 use CC::transcode qw(transcode genThumbnail);
-use CC::fileio;
-use CC::mediainfo qw(videoinfo audioinfo);
+use CC::fileio qw(filesize);
+use CC::mediainfo qw(videoinfo audioinfo generalinfo);
 use CC::ccDB qw(ccConnect ccClose);
 
 $os = $Config{osname};
@@ -106,7 +106,7 @@ sub set_job_state {
 	my $jid = shift;
 	my $state = shift;
 	read_encoder_db();
-	print "used slots: $used_slots\n";
+	
 	if ($state == 1)
 	{
                 $new_used_slots = $used_slots + 1;
@@ -189,12 +189,15 @@ sub render_job {
 			set_job_state($job_id,1);
 			my $videoResults = videoinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
 			my $audioResults = audioinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
+			my $generalResults = generalinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
+			my @gR = split(",",$generalResults);
 			my @vR = split(",",$videoResults);
 			my @aR = split(",",$audioResults);
 			if($vR[0] == 0)
 			{
-				print "UPDATE ".$content_table." set content_duration='".$vR[2]."',content_videoCodec='". $vR[3] ."',content_videoBitrate='". $vR[4] ."',content_videoCodec='". $vR[3] ."' WHERE content_uuid='".$uuid."'\n";
-				$dbh->do("UPDATE ".$content_table." set content_duration='".$vR[2]."',content_videoCodec='". $vR[3] ."',content_videoBitrate='". $vR[4] ."',content_videoCodec='". $vR[3] ."' WHERE content_uuid='".$uuid."'");
+				
+				$dbh->do("UPDATE ".$content_table." set content_filesize='".$gR[1]."',content_videoDimension='".$vR[1]."',content_duration='".$vR[2]."',content_videoCodec='". $vR[3] ."',content_videoBitrate='". $vR[4] ."',content_videoCodec='". $vR[3] ."' WHERE content_uuid='".$uuid."'");
+				$dbh->do("UPDATE ".$content_table." set content_audioCodec='". $aR[2] ."',content_audioSamplingrate='". $aR[4] ."',content_audioChannel='". $aR[3] ."' WHERE content_uuid='".$uuid."'");
 				set_job_state($job_id,2);
 			}
 			else
@@ -206,16 +209,19 @@ sub render_job {
 		if($content_type eq "Audio")
 		{
 			set_job_state($job_id,1);
-			my $audioResults = audioinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
+			my $audioResults = audioinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);			
+			my $generalResults = generalinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
+			my @gR = split(",",$generalResults);
                         my @aR = split(",",$audioResults);
+                        #my $fs = filesize($content_dir.$uuid."/".$src_filename);
 			if($aR[0] == 0)
                         {
-                                $dbh->do("UPDATE ".$content_table." set content_audioCodec='". $vR[2] ."',content_audioSamplingrate='". $vR[4] ."',content_audioChannel='". $vR[3] ."' WHERE content_uuid='".$uuid."'");
+                                $dbh->do("UPDATE ".$content_table." set content_duration='".$aR[5]."',content_filesize='".$gR[1]."',content_audioCodec='". $aR[2] ."',content_audioSamplingrate='". $aR[4] ."',content_audioChannel='". $aR[3] ."' WHERE content_uuid='".$uuid."'");
                                 set_job_state($job_id,2);
                         }
                         else
                         {
-                                $dbh->do("UPDATE ".$content_table." set content_audioCodec='unknown',content_audioSamplingrate='unknown',audioChannel='unknown' WHERE content_uuid='".$uuid."'");
+                                $dbh->do("UPDATE ".$content_table." set content_duration='"."unknown"."',content_audioCodec='unknown',content_audioSamplingrate='unknown',audioChannel='unknown' WHERE content_uuid='".$uuid."'");
                                 set_job_state($job_id,3);
                         }
 
@@ -226,7 +232,7 @@ sub render_job {
 	{
 		set_job_state($job_id,1);
 		$del_file = $content_dir . $uuid;
-		print "del: ".$del_file ."\n";
+		print "deleting : ".$del_file ."\n";
 		
 		if(rmtree($content_dir.$uuid))
 		{ set_job_state($job_id,2); }

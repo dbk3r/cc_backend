@@ -4,7 +4,6 @@ use strict;
 use warnings;
 
 use Exporter qw(import);
-use IPC::Run qw( start pump );
 
 our @EXPORT_OK = qw(filesize);
 
