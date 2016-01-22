@@ -41,12 +41,15 @@ $pm = new Parallel::ForkManager($max_encoding_slots);
 $num_cpus = Sys::CpuAffinity::getNumCpus();
 
 $dbh = ccConnect($mysql_host, $mysql_user, $mysql_password, $mysql_db);  
-$dbh->do("INSERT INTO ".$encoder_table." set encoder_ip='".$ipaddr."', encoder_max_slots='".$max_encoding_slots."', encoder_used_slots='0', encoder_cpus='".$num_cpus."'");
+$dbh->do("INSERT INTO ".$encoder_table." set encoder_instance='".$nodeinstance."', encoder_ip='".$ipaddr."', encoder_max_slots='".$max_encoding_slots."', encoder_used_slots='0', encoder_cpus='".$num_cpus."'");
 
-if (-e $ffmpeg_bin) { $dbh->do("update ".$encoder_table." set encoder_ffmpeg='1'") ;} else {  print "can\'t find ffmpeg, disable ffmpeg-encoding \n";}
-if (-e $ffmbc_bin) { $dbh->do("update ".$encoder_table." set encoder_ffmbc='1'") ;} else {  print "can\'t find ffmbc, disable ffmbc-encoding \n";}
-if (-e $blender_bin) { $dbh->do("update ".$encoder_table." set encoder_blender='1'") ;} else {  print "can\'t find blender, disable blender rendering \n";}
-if (-e $mediainfo_bin) { $dbh->do("update ".$encoder_table." set encoder_mediainfo='1'") ;} else {  print "can\'t find mediainfo, disable media analyzer \n";}
+if (-e $ffmpeg_bin) { push(@job_types_array,"'ffmpeg'"); push(@job_types_array,"'genThumbnail'") } else { print "can\'t find $ffmpeg_bin, disable ffmpeg-encoding \n";}
+if (-e $ffmbc_bin) { push(@job_types_array,"'ffmbc'"); } else {  print "can\'t find $ffmbc_bin, disable ffmbc-encoding \n";}
+if (-e $blender_bin) { push(@job_types_array,"'blender'"); } else {  print "can\'t find $blender_bin, disable blender rendering \n";}
+if (-e $mediainfo_bin) { push(@job_types_array,"'mediainfo'"); } else { print "can\'t find $mediainfo_bin, disable mediascan \n";}
+if (-e $curl_bin) { push(@job_types_array,"'curl'"); } else { print "can\'t find $curl_bin, disable ftp-transfer \n";}
+if (-e $bmxtranswrap_bin) { push(@job_types_array,"'bmx'"); } else { print "can\'t find $bmxtranswrap_bin , disable rewrapping \n";}
+$job_types = join(",",@job_types_array);
 
 ccClose($dbh);
 
@@ -77,14 +80,15 @@ sub runloop {
 	read_encoder_db();
 	$av_slots = $max_slots - $used_slots; 
 	
-	if ($av_slots > 0 && $ip eq $ipaddr) 
+	if ($av_slots > 0) 
 	{
 		# read cc_jobs
 		read_jobs_db($dbh);
-		
+			
 		if ($jobcount > 0)
 		{
 			# render job
+			set_job_state($job_id,1);
 			render_job($content_dir,$job_uuid);
 			sleep 2;
 		}
@@ -126,7 +130,6 @@ sub render_job {
 	if ($job_type eq "blender" && -e $blender_bin)
 	{
 		
-		set_job_state($job_id,1);
 		$cmd = $blender_bin ." -b " .  $content_dir . $uuid . "/" . $job_filename . " " . $job_cmd;
 		
 		if (render($job_id, $cmd))
@@ -137,7 +140,6 @@ sub render_job {
 
 	elsif ($job_type eq "sequence" && -e $ffmpeg_bin)
 	{			
-		set_job_state($job_id,1);
 		$start_number = "-start_number ". $startframe;
 		$input_sequence = $sourcefile . "/%04d.png";
 		$cmd = $ffmpeg_bin . " -r 25 -i ". $input_sequence . " ". $start_number. " -vcodec libx264 -b:v 4000k  ". $output_folder . "/" . $scene_name .".mp4";
@@ -146,7 +148,6 @@ sub render_job {
 
 	elsif ($job_type eq "transcode")
 	{
-		set_job_state($job_id,1);
 		if($coder_bin eq "ffmpeg") { $coder=$ffmpeg_bin; }
 		if($coder_bin eq "ffmbc") { $coder=$ffmbc_bin; }
 		$cmd = $coder . " " .  $job_cmd . " " . $content_dir.$job_uuid."/" . $dest_filename;
@@ -170,7 +171,6 @@ sub render_job {
 	}
 	elsif ($job_type eq "genThumbnail" && -e $ffmpeg_bin)
         {
-		set_job_state($job_id,1);
 		if(genThumbnail($ffmpeg_bin, $content_dir, $uuid, $src_filename) == 0)
 		{
 			$dbh->do("UPDATE ".$content_table." set content_thumbnail='".$src_filename.".png' WHERE content_uuid='".$uuid."'");
@@ -186,7 +186,6 @@ sub render_job {
         {
 		if($content_type eq "Video")
 		{
-			set_job_state($job_id,1);
 			my $videoResults = videoinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
 			my $audioResults = audioinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
 			my $generalResults = generalinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
@@ -208,7 +207,6 @@ sub render_job {
 		}
 		if($content_type eq "Audio")
 		{
-			set_job_state($job_id,1);
 			my $audioResults = audioinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);			
 			my $generalResults = generalinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
 			my @gR = split(",",$generalResults);
@@ -230,7 +228,6 @@ sub render_job {
 
 	elsif ($job_type eq "delContent")
 	{
-		set_job_state($job_id,1);
 		$del_file = $content_dir . $uuid;
 		print "deleting : ".$del_file ."\n";
 		
@@ -242,7 +239,6 @@ sub render_job {
 	}
 	elsif ($job_type eq "delContentDB")
 	{
-		set_job_state($job_id,1);
 		if(deldb($uuid))
 		{ set_job_state($job_id,2); }
                 else
@@ -254,8 +250,7 @@ sub render_job {
 sub read_jobs_db {
 	
 	my $dbh = shift;	
-	$jobresult = $dbh->prepare("SELECT * FROM ".$jobs_table." WHERE state='0' ORDER BY id,prio LIMIT 1 ");
-
+	$jobresult = $dbh->prepare("SELECT * FROM ".$jobs_table." WHERE state='0' AND job_type IN (".$job_types.") ORDER BY id,prio LIMIT 1 ");
 
 	$jobresult->execute();
 	$jobcount = $jobresult->rows;
@@ -286,6 +281,7 @@ sub read_encoder_db {
 		$max_slots= $row->{encoder_max_slots};
 		$used_slots= $row->{encoder_used_slots};
 		$ip = $row->{encoder_ip};
+		$instance = $row->{encoder_instance};
 	}
 
 }
@@ -294,7 +290,7 @@ sub interrupt {
 	print "encoding unit removed. bye!\n";
 	$pm->wait_all_children;
 	$dbh = ccConnect($mysql_host, $mysql_user, $mysql_password, $mysql_db);	
-    	$dbh->do("delete from ".$encoder_table." where encoder_ip='".$ipaddr."'");
+    	$dbh->do("delete from ".$encoder_table." where encoder_ip='".$ipaddr."' AND encoder_instance='".$nodeinstance."'");
 	$dbh->disconnect();	
     	exit;  
 }
