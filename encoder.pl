@@ -43,12 +43,17 @@ $num_cpus = Sys::CpuAffinity::getNumCpus();
 $dbh = ccConnect($mysql_host, $mysql_user, $mysql_password, $mysql_db);  
 $dbh->do("INSERT INTO ".$encoder_table." set encoder_instance='".$nodeinstance."', encoder_ip='".$ipaddr."', encoder_max_slots='".$max_encoding_slots."', encoder_used_slots='0', encoder_cpus='".$num_cpus."'");
 
-if (-e $ffmpeg_bin) { push(@job_types_array,"'ffmpeg'"); push(@job_types_array,"'genThumbnail'") } else { print "can\'t find $ffmpeg_bin, disable ffmpeg-encoding \n";}
-if (-e $ffmbc_bin) { push(@job_types_array,"'ffmbc'"); } else {  print "can\'t find $ffmbc_bin, disable ffmbc-encoding \n";}
+if (-e $ffmpeg_bin) {
+	push(@job_types_array,"'ffmpeg'");
+	push(@job_types_array,"'genMP4'");
+	push(@job_types_array,"'genWAV'");
+	push(@job_types_array,"'genThumbnail'");
+ } else { print "can\'t find $ffmpeg_bin, disable ffmpeg-encoding \n";}
+if (-e $ffmbc_bin) { push(@job_types_array,"'AVCIntra'"); } else {  print "can\'t find $ffmbc_bin, disable ffmbc-encoding \n";}
 if (-e $blender_bin) { push(@job_types_array,"'blender'"); } else {  print "can\'t find $blender_bin, disable blender rendering \n";}
 if (-e $mediainfo_bin) { push(@job_types_array,"'mediainfo'"); } else { print "can\'t find $mediainfo_bin, disable mediascan \n";}
-if (-e $curl_bin) { push(@job_types_array,"'curl'"); } else { print "can\'t find $curl_bin, disable ftp-transfer \n";}
-if (-e $bmxtranswrap_bin) { push(@job_types_array,"'bmx'"); } else { print "can\'t find $bmxtranswrap_bin , disable rewrapping \n";}
+if (-e $curl_bin) { push(@job_types_array,"'ftp'"); } else { print "can\'t find $curl_bin, disable ftp-transfer \n";}
+if (-e $bmxtranswrap_bin) { push(@job_types_array,"'rewrap'"); } else { print "can\'t find $bmxtranswrap_bin , disable rewrapping \n";}
 $job_types = join(",",@job_types_array);
 
 ccClose($dbh);
