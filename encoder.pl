@@ -80,7 +80,7 @@ sub runloop {
 	read_encoder_db();
 	$av_slots = $max_slots - $used_slots; 
 	
-	if ($av_slots > 0) 
+	if ($av_slots > 0 && ($ip eq $ipaddr && $nodeinstance eq $instance)) 
 	{
 		# read cc_jobs
 		read_jobs_db($dbh);
@@ -120,7 +120,7 @@ sub set_job_state {
                 $new_used_slots = $used_slots - 1;
         }
 	$dbh->do("UPDATE ".$jobs_table." set state='$state' WHERE id='".$jid."'");
-	$dbh->do("UPDATE ".$encoder_table." set encoder_used_slots='".$new_used_slots."' where encoder_ip='".$ipaddr."'");
+	$dbh->do("UPDATE ".$encoder_table." set encoder_used_slots='".$new_used_slots."' where encoder_ip='".$ipaddr."' AND encoder_instance='".$nodeinstance."'");
 }
 
 sub render_job {
@@ -275,7 +275,7 @@ sub read_jobs_db {
 
 sub read_encoder_db {
 
-	$result = $dbh->prepare("SELECT * FROM " .$encoder_table." ORDER BY encoder_used_slots LIMIT 1");
+	$result = $dbh->prepare("SELECT * FROM " .$encoder_table." where encoder_ip='".$ipaddr."' AND encoder_instance='".$nodeinstance."' ORDER BY encoder_used_slots LIMIT 1");
 	$result->execute();
 	while (my $row = $result->fetchrow_hashref) {
 		$max_slots= $row->{encoder_max_slots};
