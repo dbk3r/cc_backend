@@ -11,10 +11,10 @@ sub transcode {				# Syntax transcode(JOB-ID, FFCMD, OUTFILE, DB-CONNECTION)
         my $jid = shift; 		# Job ID
         my $ff = shift; 		# FFCMD
 	my $outfile = shift; 		# OUTFILE
-	our $dbh = shift;		# DB-CONNECTION
+	my $dbh = shift;		# DB-CONNECTION
         my @ffCMD = split(" ",$ff);
         my ($in, $out, $err);
-	our $retval = 1;
+	my $retval = 1;
 
           my $harness = start \@ffCMD, \$in, \$out, \$err;
           pump $harness until ($err =~ m{Duration: (\d+:\d+:\d+\.\d+)}ms);
@@ -45,9 +45,9 @@ sub transcode {				# Syntax transcode(JOB-ID, FFCMD, OUTFILE, DB-CONNECTION)
 
               finish $harness;
 	      if(filesize($outfile) > 0) {
-		$$retval = 1;
+		$$retval = 0;
 	      } else {
-		$retval = 0;
+		$retval = 1;
 	      }
 	return $retval;
 }

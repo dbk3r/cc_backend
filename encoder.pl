@@ -43,18 +43,14 @@ $num_cpus = Sys::CpuAffinity::getNumCpus();
 $dbh = ccConnect($mysql_host, $mysql_user, $mysql_password, $mysql_db);  
 $dbh->do("INSERT INTO ".$encoder_table." set encoder_instance='".$nodeinstance."', encoder_ip='".$ipaddr."', encoder_max_slots='".$max_encoding_slots."', encoder_used_slots='0', encoder_cpus='".$num_cpus."'");
 
-if (-e $ffmpeg_bin) {
-	push(@job_types_array,"'ffmpeg'");
-	push(@job_types_array,"'genMP4'");
-	push(@job_types_array,"'genWAV'");
-	push(@job_types_array,"'genThumbnail'");
- } else { print "can\'t find $ffmpeg_bin, disable ffmpeg-encoding \n";}
-if (-e $ffmbc_bin) { push(@job_types_array,"'AVCIntra'"); } else {  print "can\'t find $ffmbc_bin, disable ffmbc-encoding \n";}
-if (-e $blender_bin) { push(@job_types_array,"'blender'"); } else {  print "can\'t find $blender_bin, disable blender rendering \n";}
-if (-e $mediainfo_bin) { push(@job_types_array,"'mediainfo'"); } else { print "can\'t find $mediainfo_bin, disable mediascan \n";}
-if (-e $curl_bin) { push(@job_types_array,"'ftp'"); } else { print "can\'t find $curl_bin, disable ftp-transfer \n";}
-if (-e $bmxtranswrap_bin) { push(@job_types_array,"'rewrap'"); } else { print "can\'t find $bmxtranswrap_bin , disable rewrapping \n";}
-$job_types = join(",",@job_types_array);
+if (-e $ffmpeg_bin) { push(@job_essentials_array,"'ffmpeg'"); } else { print "can\'t find $ffmpeg_bin, disable ffmpeg-encoding \n";}
+if (-e $ffmbc_bin) { push(@job_essentials_array,"'ffmbc'"); } else {  print "can\'t find $ffmbc_bin, disable ffmbc-encoding \n";}
+if (-e $blender_bin) { push(@job_essentials_array,"'blender'"); } else {  print "can\'t find $blender_bin, disable blender rendering \n";}
+if (-e $mediainfo_bin) { push(@job_essentials_array,"'mediainfo'"); } else { print "can\'t find $mediainfo_bin, disable mediascan \n";}
+if (-e $curl_bin) { push(@job_essentials_array,"'curl'"); } else { print "can\'t find $curl_bin, disable ftp-transfer \n";}
+if (-e $bmxtranswrap_bin) { push(@job_essentials_array,"'bmxtranswrap'"); } else { print "can\'t find $bmxtranswrap_bin , disable rewrapping \n";}
+
+$job_essentials = join(",",@job_essentials_array);
 
 ccClose($dbh);
 
@@ -101,14 +97,7 @@ sub runloop {
 	#ccClose($dbh);
 }
 
-sub deldb {
-	my $uuid = shift;
-	$retval = true;
-	$dbh->do("DELETE FROM ".$content_table." WHERE content_uuid='".$uuid."'");		
-	$dbh->do("DELETE FROM ".$jobs_table." WHERE (uuid='".$uuid."' and state<>0)");	
-	
-	return $retval;
-}
+
 
 
 sub set_job_state {
@@ -153,10 +142,11 @@ sub render_job {
 
 	elsif ($job_type eq "transcode")
 	{
-		if($coder_bin eq "ffmpeg") { $coder=$ffmpeg_bin; }
-		if($coder_bin eq "ffmbc") { $coder=$ffmbc_bin; }
-		$cmd = $coder . " " .  $job_cmd . " " . $content_dir.$job_uuid."/" . $dest_filename;
-		if (transcode($job_id,$cmd,$dest_filename,$dbh))
+		if($job_essential eq "ffmpeg") { $coder=$ffmpeg_bin; }
+		if($job_essential eq "ffmbc") { $coder=$ffmbc_bin; }
+		$cmd = $coder . " -y -i ". $content_dir.$job_uuid."/" .$src_filename . " " . $job_cmd . " " . $content_dir.$job_uuid."/" . $dest_filename;
+		print $cmd . "\n";
+		if (transcode($job_id,$cmd,$dest_filename,$dbh) == 0)
 		{ set_job_state($job_id,2); }
                 else
                 { set_job_state($job_id,3); }
@@ -191,6 +181,7 @@ sub render_job {
         {
 		if($content_type eq "Video")
 		{
+			
 			my $videoResults = videoinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
 			my $audioResults = audioinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
 			my $generalResults = generalinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
@@ -231,31 +222,45 @@ sub render_job {
 		}
         }
 
-	elsif ($job_type eq "delContent")
+	elsif ($job_type eq "delete")
 	{
-		$del_file = $content_dir . $uuid;
-		print "deleting : ".$del_file ."\n";
+		if($job_shortName eq "delFileContent")
+		{
+			$del_file = $content_dir . $uuid;
+			print "deleting : ".$del_file ."\n";
+			
+			if(rmtree($content_dir.$uuid))
+			{ set_job_state($job_id,2); print "deleting : ".$del_file ."success! \n";}
+			else
+			{ set_job_state($job_id,3); print "deleting : ".$del_file ."failed! \n";}
+			
+		}
+		elsif($job_shortName eq "delDBContent")
+		{
+			if(deldb($uuid))
+			{ set_job_state($job_id,2); }
+			else
+			{ set_job_state($job_id,3); }	
+		}
 		
-		if(rmtree($content_dir.$uuid))
-		{ set_job_state($job_id,2); }
-                else
-                { set_job_state($job_id,3); }	
-                $dbh->do("DELETE FROM ".$jobs_table." WHERE (uuid='".$uuid."' and state<>0)");	
 	}
-	elsif ($job_type eq "delContentDB")
-	{
-		if(deldb($uuid))
-		{ set_job_state($job_id,2); }
-                else
-                { set_job_state($job_id,3); }	
-	}
+	
 		
+}
+
+sub deldb {
+	my $uuid = shift;
+	$retval = true;
+	$dbh->do("DELETE FROM ".$content_table." WHERE content_uuid='".$uuid."'");		
+	$dbh->do("DELETE FROM ".$jobs_table." WHERE (uuid='".$uuid."' and state<>0)");	
+	
+	return $retval;
 }
 
 sub read_jobs_db {
 	
 	my $dbh = shift;	
-	$jobresult = $dbh->prepare("SELECT * FROM ".$jobs_table." WHERE state='0' AND job_type IN (".$job_types.") ORDER BY id,prio LIMIT 1 ");
+	$jobresult = $dbh->prepare("SELECT * FROM ".$jobs_table." WHERE state='0' AND job_essential IN (".$job_essentials.") ORDER BY id,prio LIMIT 1 ");
 
 	$jobresult->execute();
 	$jobcount = $jobresult->rows;
@@ -263,10 +268,11 @@ sub read_jobs_db {
 	{
 		while (my $jobrow = $jobresult->fetchrow_hashref) {
 			$job_id = $jobrow->{id};
-			$job_cmd = $jobrow->{cmd};	
+			$job_cmd = $jobrow->{job_cmd};	
 			$content_type = $jobrow->{content_type};	
 			$job_type = $jobrow->{job_type};
-			$coder_bin = $jobrow->{coder_bin};		
+			$job_shortName = $jobrow->{job_shortName};
+			$job_essential = $jobrow->{job_essential};		
 			$job_prio = $jobrow->{prio};
 			$src_filename = $jobrow->{src_filename};
 			$dest_filename = $jobrow->{dest_filename};
