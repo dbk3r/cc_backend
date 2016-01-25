@@ -24,4 +24,5 @@ $content_dir = $cfg->param('content_dir');
 
 $nodeinstance = $cfg->param('nodeinstance');
 
-@job_types_array = ("'copy'","'move'","'delContent'","'delContentDB'");
+@job_types_array = ("'copy'","'move'","'delete'");
+undef(@job_essentials_array);
