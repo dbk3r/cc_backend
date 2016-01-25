@@ -25,12 +25,11 @@ our $dbh;
 if ($os eq "MSWin32")
 {
 	$ipaddr = inet_ntoa(scalar(gethostbyname($name)) || 'localhost');
-
 }
+
 if ($os eq "linux")
 {
 	$ipaddr = Net::Address::IP::Local->public_ipv4;
-	
 }
 my $script_path = $FindBin::Bin . "/" ;
 
