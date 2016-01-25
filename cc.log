@@ -33,3 +33,28 @@
 [Mon 25 Jan 2016 11:14:31] :: [9804] /home/db002/tools/blender/blender-thumbnailer.py /home/db002/dps-p-austausch/sysfs/db002/cc/content/d2c6a5cc-dae3-4865-ae7d-3db7285cdab9/test.blend /home/db002/dps-p-austausch/sysfs/db002/cc/content/d2c6a5cc-dae3-4865-ae7d-3db7285cdab9/test.blend.png
 [Mon 25 Jan 2016 11:14:34] :: [9814] /home/db002/tools/blender/blender-thumbnailer.py /home/db002/dps-p-austausch/sysfs/db002/cc/content/14f4b10b-afb6-452b-9e7f-a6898ed75f85/test.blend /home/db002/dps-p-austausch/sysfs/db002/cc/content/14f4b10b-afb6-452b-9e7f-a6898ed75f85/test.blend.png
 [Mon 25 Jan 2016 11:14:37] :: [9820] /home/db002/tools/blender/blender-thumbnailer.py /home/db002/dps-p-austausch/sysfs/db002/cc/content/c99f3672-9af3-499f-94a9-706845234492/test.blend /home/db002/dps-p-austausch/sysfs/db002/cc/content/c99f3672-9af3-499f-94a9-706845234492/test.blend.png
+[Mon 25 Jan 2016 11:20:39] :: [10312] coder-unit [my.1] 192.168.120.210 started
+[Mon 25 Jan 2016 11:23:18] :: [10567] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/14f4b10b-afb6-452b-9e7f-a6898ed75f85
+[Mon 25 Jan 2016 11:23:18] :: [10567] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/14f4b10b-afb6-452b-9e7f-a6898ed75f85success! 
+[Mon 25 Jan 2016 11:23:18] :: [10567] deleting Content with UUID: 14f4b10b-afb6-452b-9e7f-a6898ed75f85
+[Mon 25 Jan 2016 11:23:21] :: [10575] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/14f4b10b-afb6-452b-9e7f-a6898ed75f85
+[Mon 25 Jan 2016 11:23:21] :: [10575] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/14f4b10b-afb6-452b-9e7f-a6898ed75f85failed! 
+[Mon 25 Jan 2016 11:23:21] :: [10575] deleting Content with UUID: 14f4b10b-afb6-452b-9e7f-a6898ed75f85
+[Mon 25 Jan 2016 11:23:30] :: [10586] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/d2c6a5cc-dae3-4865-ae7d-3db7285cdab9
+[Mon 25 Jan 2016 11:23:30] :: [10586] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/d2c6a5cc-dae3-4865-ae7d-3db7285cdab9success! 
+[Mon 25 Jan 2016 11:23:30] :: [10586] deleting Content with UUID: d2c6a5cc-dae3-4865-ae7d-3db7285cdab9
+[Mon 25 Jan 2016 11:23:33] :: [10593] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/d2c6a5cc-dae3-4865-ae7d-3db7285cdab9
+[Mon 25 Jan 2016 11:23:33] :: [10593] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/d2c6a5cc-dae3-4865-ae7d-3db7285cdab9failed! 
+[Mon 25 Jan 2016 11:23:33] :: [10593] deleting Content with UUID: d2c6a5cc-dae3-4865-ae7d-3db7285cdab9
+[Mon 25 Jan 2016 11:23:36] :: [10596] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/c99f3672-9af3-499f-94a9-706845234492
+[Mon 25 Jan 2016 11:23:36] :: [10596] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/c99f3672-9af3-499f-94a9-706845234492success! 
+[Mon 25 Jan 2016 11:23:36] :: [10596] deleting Content with UUID: c99f3672-9af3-499f-94a9-706845234492
+[Mon 25 Jan 2016 11:23:39] :: [10602] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/c99f3672-9af3-499f-94a9-706845234492
+[Mon 25 Jan 2016 11:23:39] :: [10602] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/c99f3672-9af3-499f-94a9-706845234492failed! 
+[Mon 25 Jan 2016 11:23:39] :: [10602] deleting Content with UUID: c99f3672-9af3-499f-94a9-706845234492
+[Mon 25 Jan 2016 11:23:51] :: [10614] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/d9c66f60-6c23-4844-8487-a8fe8d83ec77
+[Mon 25 Jan 2016 11:23:51] :: [10614] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/d9c66f60-6c23-4844-8487-a8fe8d83ec77success! 
+[Mon 25 Jan 2016 11:23:51] :: [10614] deleting Content with UUID: d9c66f60-6c23-4844-8487-a8fe8d83ec77
+[Mon 25 Jan 2016 11:23:54] :: [10620] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/d9c66f60-6c23-4844-8487-a8fe8d83ec77
+[Mon 25 Jan 2016 11:23:54] :: [10620] deleting : /home/db002/dps-p-austausch/sysfs/db002/cc/content/d9c66f60-6c23-4844-8487-a8fe8d83ec77failed! 
+[Mon 25 Jan 2016 11:23:54] :: [10620] deleting Content with UUID: d9c66f60-6c23-4844-8487-a8fe8d83ec77
