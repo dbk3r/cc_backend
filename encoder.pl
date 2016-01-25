@@ -11,8 +11,8 @@ use IPC::Run qw(start pump);
 use File::Path qw( rmtree );
 use Cwd 'abs_path';
 use lib abs_path.'/modules';
-use CC::transcode qw(transcode genThumbnail);
-use CC::fileio qw(filesize);
+use CC::transcode qw(transcode genThumbnail blenderthumbnailer) ;
+use CC::fileio qw(filesize write_log);
 use CC::mediainfo qw(videoinfo audioinfo generalinfo);
 use CC::ccDB qw(ccConnect ccClose);
 
@@ -53,7 +53,8 @@ $job_essentials = join(",",@job_essentials_array);
 
 ccClose($dbh);
 
-print "encoder-unit is running \n";
+print "coder-unit [". $nodeinstance."] ".$ipaddr ." started \n";
+write_log($log_file, "coder-unit [". $nodeinstance."] ".$ipaddr ." started");
 
 $slot_thread = 1;
 while (1) {
@@ -97,8 +98,6 @@ sub runloop {
 }
 
 
-
-
 sub set_job_state {
 	my $jid = shift;
 	my $state = shift;
@@ -120,7 +119,8 @@ sub render_job {
 	
 	my $content_dir=shift;
 	my $uuid = shift;	
-	if ($job_type eq "blender" && -e $blender_bin)
+	
+	if ($job_type eq "render" && -e $blender_bin)
 	{
 		
 		$cmd = $blender_bin ." -b " .  $content_dir . $uuid . "/" . $job_filename . " " . $job_cmd;
@@ -144,7 +144,8 @@ sub render_job {
 		if($job_essential eq "ffmpeg") { $coder=$ffmpeg_bin; }
 		if($job_essential eq "ffmbc") { $coder=$ffmbc_bin; }
 		$cmd = $coder . " -y -i ". $content_dir.$job_uuid."/" .$src_filename . " " . $job_cmd . " " . $content_dir.$job_uuid."/" . $dest_filename;
-		print $cmd . "\n";
+		write_log($log_file, $cmd );
+		
 		if (transcode($job_id,$cmd,$dest_filename,$dbh) == 0)
 		{ set_job_state($job_id,2); }
                 else
@@ -163,24 +164,41 @@ sub render_job {
 	{
 		
 	}
-	elsif ($job_type eq "genThumbnail" && -e $ffmpeg_bin)
+	elsif ($job_type eq "genThumbnail")
         {
-		if(genThumbnail($ffmpeg_bin, $content_dir, $uuid, $src_filename) == 0)
-		{
-			$dbh->do("UPDATE ".$content_table." set content_thumbnail='".$src_filename.".png' WHERE content_uuid='".$uuid."'");
-			set_job_state($job_id,2);
+        	if($job_essential eq "ffmpeg")
+        	{
+			if(genThumbnail($ffmpeg_bin, $content_dir, $uuid, $src_filename) == 0)
+			{
+				$dbh->do("UPDATE ".$content_table." set content_thumbnail='".$src_filename.".png' WHERE content_uuid='".$uuid."'");
+				set_job_state($job_id,2);
+			}
+			else
+			{
+				set_job_state($job_id,3);
+			}
 		}
-		else
+		elsif($job_essential eq "blender")
 		{
-			set_job_state($job_id,3);
+			write_log($log_file, $blender_thumbnailer_bin . " ". $content_dir.$uuid."/".$src_filename." ".$content_dir.$uuid."/".$src_filename.".png");
+			if(blenderthumbnailer($blender_thumbnailer_bin, $content_dir, $uuid, $src_filename) == 0)			
+			{				
+				$dbh->do("UPDATE ".$content_table." set content_thumbnail='".$src_filename.".png' WHERE content_uuid='".$uuid."'");
+				set_job_state($job_id,2);
+			}
+			else
+			{
+				if(! -e $blender_thumbnailer_bin) { write_log($log_file, $blender_thumbnailer_bin," not found!");}
+				set_job_state($job_id,3);
+			}
 		}
         }
 
 	elsif ($job_type eq "mediainfo" && -e $mediainfo_bin)
         {
 		if($content_type eq "Video")
-		{
-			
+		{			
+			write_log($log_file,"mediainfo: ".$content_dir.$uuid."/".$src_filename);
 			my $videoResults = videoinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
 			my $audioResults = audioinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
 			my $generalResults = generalinfo($mediainfo_bin, $content_dir, $uuid, $src_filename);
@@ -188,8 +206,7 @@ sub render_job {
 			my @vR = split(",",$videoResults);
 			my @aR = split(",",$audioResults);
 			if($vR[0] == 0)
-			{
-				
+			{				
 				$dbh->do("UPDATE ".$content_table." set content_filesize='".$gR[1]."',content_videoDimension='".$vR[1]."',content_duration='".$vR[2]."',content_videoCodec='". $vR[3] ."',content_videoBitrate='". $vR[4] ."',content_videoCodec='". $vR[3] ."' WHERE content_uuid='".$uuid."'");
 				$dbh->do("UPDATE ".$content_table." set content_audioCodec='". $aR[2] ."',content_audioSamplingrate='". $aR[4] ."',content_audioChannel='". $aR[3] ."' WHERE content_uuid='".$uuid."'");
 				set_job_state($job_id,2);
@@ -223,27 +240,21 @@ sub render_job {
 
 	elsif ($job_type eq "delete")
 	{
-		if($job_shortName eq "delFileContent")
-		{
+		
 			$del_file = $content_dir . $uuid;
-			print "deleting : ".$del_file ."\n";
+			write_log($log_file, "deleting : ".$del_file);
 			
 			if(rmtree($content_dir.$uuid))
-			{ set_job_state($job_id,2); print "deleting : ".$del_file ."success! \n";}
+			{ set_job_state($job_id,2); write_log($log_file, "deleting : ".$del_file ."success! "); }
 			else
-			{ set_job_state($job_id,3); print "deleting : ".$del_file ."failed! \n";}
-			
-		}
-		elsif($job_shortName eq "delDBContent")
-		{
+			{ set_job_state($job_id,3); write_log($log_file, "deleting : ".$del_file ."failed! ");}
+		
+			write_log($log_file, "deleting Content with UUID: ".$uuid);
 			if(deldb($uuid))
 			{ set_job_state($job_id,2); }
 			else
-			{ set_job_state($job_id,3); }	
-		}
-		
-	}
-	
+			{ set_job_state($job_id,3); }				
+	}	
 		
 }
 

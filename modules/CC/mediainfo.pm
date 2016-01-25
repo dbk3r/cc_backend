@@ -17,8 +17,7 @@ sub generalinfo {
 
 	my $miCMD = " --Inform=\"General;%FileSize/String%\"";	
 	my $media_infos = `\"$mediainfo_bin\" $miCMD \"$content_dir$uuid/$src_filename\"`;
-	chop $media_infos;
-	print "\"$mediainfo_bin\" $miCMD \"$content_dir$uuid/$src_filename\"\n";
+	chop $media_infos;	
 	if (length($media_infos)) { $err = 0; } else { $err = 1;}	
 	return $err.",".$media_infos;
 	
@@ -32,11 +31,9 @@ sub videoinfo {
         my $src_filename=shift;
 	my $content_table = shift;
 	my $err = 0;
-
 	my $miCMD = " --Inform=\"Video;%Width%:%Height%,%Duration/String4%,%Codec/String%,%BitRate/String%\"";	
 	my $media_infos = `\"$mediainfo_bin\" $miCMD \"$content_dir$uuid/$src_filename\"`;
-	chop $media_infos;
-	print "\"$mediainfo_bin\" $miCMD \"$content_dir$uuid/$src_filename\"\n";
+	chop $media_infos;	
 	if (length($media_infos)) { $err = 0; } else { $err = 1;}	
 	return $err.",".$media_infos;
 }
@@ -47,12 +44,10 @@ sub audioinfo {
         my $uuid = shift;
         my $src_filename=shift;
         my $content_table = shift;
-	my $err = 0;
-	
+	my $err = 0;	
 	my $miCMD = " --Inform=\"Audio;%StreamCount%,%Codec%,%Channels%,%SamplingRate/String%,%Duration/String3%\"";	
 	my $media_infos =  `\"$mediainfo_bin\" $miCMD \"$content_dir$uuid/$src_filename\"`;
-	chop $media_infos;
-	print "\"$mediainfo_bin\" $miCMD \"$content_dir$uuid/$src_filename\"\n";
+	chop $media_infos;	
 	if (length($media_infos)) { $err = 0; } else { $err = 1;}
         return $err.",".$media_infos;
 }

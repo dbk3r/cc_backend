@@ -4,7 +4,7 @@ use warnings;
 use Exporter qw(import);
 use IPC::Run qw( start pump );
 
-our @EXPORT_OK = qw(transcode genThumbnail);
+our @EXPORT_OK = qw(transcode genThumbnail blenderthumbnailer);
 
 sub transcode {				# Syntax transcode(JOB-ID, FFCMD, OUTFILE, DB-CONNECTION)
 
@@ -63,6 +63,16 @@ sub genThumbnail {
 	my $genResult = system($genCMD);
 	return $genResult;
 }
+sub blenderthumbnailer {
+	my $thumbnailer_bin = shift;
+	my $content_dir = shift;
+	my $uuid = shift;
+	my $src_filename = shift;
+	my $genthumbnail = $thumbnailer_bin . " ". $content_dir.$uuid."/".$src_filename." ".$content_dir.$uuid."/".$src_filename.".png";
+	my $genResult = system($genthumbnail);
+	return $genResult;
+}
+
 
 1;
 

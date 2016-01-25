@@ -17,6 +17,7 @@ $max_encoding_slots = $cfg->param('max_encoding_slots');
 $ffmpeg_bin = $cfg->param('ffmpeg');
 $ffmbc_bin = $cfg->param('ffmbc');
 $blender_bin = $cfg->param('blender');
+$blender_thumbnailer_bin  = $cfg->param('blender-thumbnailer');
 $mediainfo_bin = $cfg->param('mediainfo');
 $bmxtranswrap_bin = $cfg->param('bmxtranswrap');
 $curl_bin = $cfg->param('curl');
@@ -24,5 +25,7 @@ $content_dir = $cfg->param('content_dir');
 
 $nodeinstance = $cfg->param('nodeinstance');
 
-@job_types_array = ("'copy'","'move'","'delete'");
-undef(@job_essentials_array);
+$log_file = $cfg->param('logfile');
+
+@job_essentials_array = ("'copy'","'move'","'delete'");
+
