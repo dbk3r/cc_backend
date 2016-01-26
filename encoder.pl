@@ -13,7 +13,7 @@ use Cwd 'abs_path';
 use lib abs_path.'/modules';
 use CC::transcode qw(transcode genThumbnail blenderthumbnailer) ;
 use CC::fileio qw(filesize write_log);
-use CC::mediainfo qw(videoinfo audioinfo generalinfo);
+use CC::mediainfo qw(videoinfo audioinfo generalinfo getblendInfo);
 use CC::ccDB qw(ccConnect ccClose);
 
 $os = $Config{osname};
@@ -47,6 +47,7 @@ if (-e $ffmbc_bin) { push(@job_essentials_array,"'ffmbc'"); } else {  print "can
 if (-e $blender_bin) { push(@job_essentials_array,"'blender'"); } else {  print "can\'t find $blender_bin, disable blender rendering \n";}
 if (-e $mediainfo_bin) { push(@job_essentials_array,"'mediainfo'"); } else { print "can\'t find $mediainfo_bin, disable mediascan \n";}
 if (-e $curl_bin) { push(@job_essentials_array,"'curl'"); } else { print "can\'t find $curl_bin, disable ftp-transfer \n";}
+if (-e $blender_info_bin) { push(@job_essentials_array,"'blenderinfo'"); } else { print "can\'t find $blender_info_bin, disable blenderinfo \n";}
 if (-e $bmxtranswrap_bin) { push(@job_essentials_array,"'bmxtranswrap'"); } else { print "can\'t find $bmxtranswrap_bin , disable rewrapping \n";}
 
 $job_essentials = join(",",@job_essentials_array);
@@ -235,6 +236,23 @@ sub render_job {
                                 set_job_state($job_id,3);
                         }
 
+		}
+		if($content_type eq "blender")
+		{
+			my $blenderResults = getblendInfo($blender_info_bin, $content_dir, $uuid, $src_filename);
+			my @bR = split(",",$blenderResults);
+			my $fs = filesize($content_dir.$uuid."/".$src_filename); 
+			if($bR[0] == 0)
+                        {
+                                $dbh->do("UPDATE ".$content_table." set content_filesize='".$fs."',content_sceneName='". $bR[3] ."',content_startFrame='". $bR[1] ."',content_endFrame='". $bR[2] ."' WHERE content_uuid='".$uuid."'");
+                                set_job_state($job_id,2);
+                        }
+                        else
+                        {
+                                $dbh->do("UPDATE ".$content_table." set content_duration='"."unknown"."',content_audioCodec='unknown',content_audioSamplingrate='unknown',audioChannel='unknown' WHERE content_uuid='".$uuid."'");
+                                set_job_state($job_id,3);
+                        }
+			
 		}
         }
 

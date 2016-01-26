@@ -18,6 +18,7 @@ $ffmpeg_bin = $cfg->param('ffmpeg');
 $ffmbc_bin = $cfg->param('ffmbc');
 $blender_bin = $cfg->param('blender');
 $blender_thumbnailer_bin  = $cfg->param('blender-thumbnailer');
+$blender_info_bin  = $cfg->param('blender-info');
 $mediainfo_bin = $cfg->param('mediainfo');
 $bmxtranswrap_bin = $cfg->param('bmxtranswrap');
 $curl_bin = $cfg->param('curl');

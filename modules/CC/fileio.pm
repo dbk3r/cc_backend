@@ -11,7 +11,18 @@ use File::stat;
 
 sub filesize {
         my $file = shift;
-        return stat($file)->size;
+        my $size = (stat($file)->size) ;
+        my $retval = "";
+        if ($size >= 1000000000) {
+                $retval = int(($size / 1000000000)). " GB";
+        }
+        elsif ($size >= 1000000) {
+                $retval = int(($size / 1000000)) .  " MB";
+        }
+        else {
+                $retval = int(($size / 1000)) ." KB";
+        }
+        return $retval;
 }
 
 sub write_log {
