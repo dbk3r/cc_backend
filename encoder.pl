@@ -16,6 +16,8 @@ use CC::fileio qw(filesize write_log);
 use CC::mediainfo qw(videoinfo audioinfo generalinfo getblendInfo);
 use CC::ccDB qw(ccConnect ccClose);
 
+
+
 $os = $Config{osname};
 $SIG{INT} = \&interrupt;
 #$host = hostname();
@@ -42,13 +44,25 @@ $num_cpus = Sys::CpuAffinity::getNumCpus();
 $dbh = ccConnect($mysql_host, $mysql_user, $mysql_password, $mysql_db);  
 $dbh->do("INSERT INTO ".$encoder_table." set encoder_instance='".$nodeinstance."', encoder_ip='".$ipaddr."', encoder_max_slots='".$max_encoding_slots."', encoder_used_slots='0', encoder_cpus='".$num_cpus."'");
 
-if (-e $ffmpeg_bin) { push(@job_essentials_array,"'ffmpeg'"); } else { print "can\'t find $ffmpeg_bin, disable ffmpeg-encoding \n";}
-if (-e $ffmbc_bin) { push(@job_essentials_array,"'ffmbc'"); } else {  print "can\'t find $ffmbc_bin, disable ffmbc-encoding \n";}
-if (-e $blender_bin) { push(@job_essentials_array,"'blender'"); } else {  print "can\'t find $blender_bin, disable blender rendering \n";}
-if (-e $mediainfo_bin) { push(@job_essentials_array,"'mediainfo'"); } else { print "can\'t find $mediainfo_bin, disable mediascan \n";}
-if (-e $curl_bin) { push(@job_essentials_array,"'curl'"); } else { print "can\'t find $curl_bin, disable ftp-transfer \n";}
-if (-e $blender_info_bin) { push(@job_essentials_array,"'blenderinfo'"); } else { print "can\'t find $blender_info_bin, disable blenderinfo \n";}
-if (-e $bmxtranswrap_bin) { push(@job_essentials_array,"'bmxtranswrap'"); } else { print "can\'t find $bmxtranswrap_bin , disable rewrapping \n";}
+
+if (defined $options{t})
+{
+	print "runs_as_Transcoder\n";
+	if (-e $ffmpeg_bin) { push(@job_essentials_array,"'ffmpeg'"); } else { print "can\'t find $ffmpeg_bin, disable ffmpeg-encoding \n";}
+	if (-e $ffmbc_bin) { push(@job_essentials_array,"'ffmbc'"); } else {  print "can\'t find $ffmbc_bin, disable ffmbc-encoding \n";}
+	if (-e $blender_bin) { push(@job_essentials_array,"'blender'"); } else {  print "can\'t find $blender_bin, disable blender rendering \n";}
+	if (-e $blender_info_bin) { push(@job_essentials_array,"'blenderinfo'"); } else { print "can\'t find $blender_info_bin, disable blenderinfo \n";}
+	if (-e $bmxtranswrap_bin) { push(@job_essentials_array,"'bmxtranswrap'"); } else { print "can\'t find $bmxtranswrap_bin , disable rewrapping \n";}
+}
+if (defined $options{w})
+{
+	print "runs_as_ioWorker\n";
+	push(@job_essentials_array,"'delete'");
+	push(@job_essentials_array,"'copy'");
+	push(@job_essentials_array,"'move'");
+	if (-e $mediainfo_bin) { push(@job_essentials_array,"'mediainfo'"); } else { print "can\'t find $mediainfo_bin, disable mediascan \n";}
+	if (-e $curl_bin) { push(@job_essentials_array,"'curl'"); } else { print "can\'t find $curl_bin, disable ftp-transfer \n";}
+}
 
 $job_essentials = join(",",@job_essentials_array);
 
@@ -114,6 +128,9 @@ sub set_job_state {
         }
 	$dbh->do("UPDATE ".$jobs_table." set state='$state' WHERE id='".$jid."'");
 	$dbh->do("UPDATE ".$encoder_table." set encoder_used_slots='".$new_used_slots."' where encoder_ip='".$ipaddr."' AND encoder_instance='".$nodeinstance."'");
+	if($state=="2")
+	{ $dbh->do("update cc_jobs set progress='100' where id='$jid'"); }
+				
 }
 
 sub render_job {
@@ -147,7 +164,9 @@ sub render_job {
 		$cmd = $coder . " -y -i ". $content_dir.$job_uuid."/" .$src_filename . " " . $job_cmd . " " . $content_dir.$job_uuid."/" . $dest_filename;
 		write_log($log_file, $cmd );
 		
-		if (transcode($job_id,$cmd,$dest_filename,$dbh) == 0)
+		transcode($job_id,$cmd,$dest_filename,$dbh);
+		
+		if(-s  $content_dir.$job_uuid."/" . $dest_filename > 0)		
 		{ set_job_state($job_id,2); }
                 else
                 { set_job_state($job_id,3); }
@@ -173,6 +192,7 @@ sub render_job {
 			{
 				$dbh->do("UPDATE ".$content_table." set content_thumbnail='".$src_filename.".png' WHERE content_uuid='".$uuid."'");
 				set_job_state($job_id,2);
+				
 			}
 			else
 			{

@@ -4,6 +4,7 @@ use warnings;
 use Exporter qw(import);
 use IPC::Run qw( start pump );
 
+
 our @EXPORT_OK = qw(transcode genThumbnail blenderthumbnailer);
 
 sub transcode {				# Syntax transcode(JOB-ID, FFCMD, OUTFILE, DB-CONNECTION)
@@ -40,16 +41,17 @@ sub transcode {				# Syntax transcode(JOB-ID, FFCMD, OUTFILE, DB-CONNECTION)
               my $job_state = $dbh->prepare("update cc_jobs set progress='$progress' where id='$jid'");
                  $job_state->execute();
                  $err = "";
-              last if ( $progress >= 99);
+                 
+              
+              if ($progress >= 99) {
+		my $job_state = $dbh->prepare("update cc_jobs set progress='100' where id='$jid'");
+		$job_state->execute();
+		last;      
+              }
           }
-
+	      
               finish $harness;
-	      if(filesize($outfile) > 0) {
-		$$retval = 0;
-	      } else {
-		$retval = 1;
-	      }
-	return $retval;
+	      
 }
 
 sub genThumbnail {

@@ -1,4 +1,16 @@
 use Config::Simple;
+use Getopt::Std;
+ 
+
+our %options=();
+getopts("hwti:", \%options);
+
+if (defined $options{h})
+{
+	print "options:\n -i [instanceName] -w [run_as_ioWorker] -t [run_as_transcoder]\n";
+	exit;
+}
+
 
 $cfg = new Config::Simple();
 $cfg->read('encoder.cfg');
@@ -23,10 +35,17 @@ $mediainfo_bin = $cfg->param('mediainfo');
 $bmxtranswrap_bin = $cfg->param('bmxtranswrap');
 $curl_bin = $cfg->param('curl');
 $content_dir = $cfg->param('content_dir');
-
-$nodeinstance = $cfg->param('nodeinstance');
+if (defined $options{i})
+{
+	$nodeinstance = $options{i};
+	
+}
+else
+{
+	$nodeinstance = $cfg->param('nodeinstance');
+}
 
 $log_file = $cfg->param('logfile');
 
-@job_essentials_array = ("'copy'","'move'","'delete'");
+@job_essentials_array = ("'test'");
 
