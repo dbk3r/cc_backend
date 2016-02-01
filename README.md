@@ -21,6 +21,7 @@ strg+c  or 'kill -2 pid' to interrupt the running prozess
 be shure to install following perl modules.
 I recommened to use cpan
 
+- Try::Tiny
 - Config::Simple
 - Config
 - Sys::CpuAffinity

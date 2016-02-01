@@ -96,7 +96,7 @@ sub runloop {
 	read_encoder_db();
 	$av_slots = $max_slots - $used_slots; 
 	
-	if ($av_slots > 0 && ($ip eq $ipaddr && $nodeinstance eq $instance)) 
+	if ($av_slots > 0) 
 	{
 		# read cc_jobs
 		read_jobs_db($dbh);
