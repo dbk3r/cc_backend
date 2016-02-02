@@ -120,14 +120,14 @@ sub set_job_state {
 	
 	if ($state == 1)
 	{
-                $new_used_slots = $used_slots + 1;
+                $used_slots = $used_slots + 1;
 	}
 	else
         {
-                $new_used_slots = $used_slots - 1;
+                $used_slots = $used_slots - 1;
         }
 	$dbh->do("UPDATE ".$jobs_table." set state='$state' WHERE id='".$jid."'");
-	$dbh->do("UPDATE ".$encoder_table." set encoder_used_slots='".$new_used_slots."' where encoder_ip='".$ipaddr."' AND encoder_instance='".$nodeinstance."'");
+	$dbh->do("UPDATE ".$encoder_table." set encoder_used_slots='".$used_slots."' where encoder_ip='".$ipaddr."' AND encoder_instance='".$nodeinstance."'");
 	if($state=="2")
 	{ $dbh->do("update cc_jobs set progress='100' where id='$jid'"); }
 				
@@ -281,7 +281,7 @@ sub render_job {
 		
 			$del_file = $content_dir . $uuid;
 			write_log($log_file, "deleting : ".$del_file);
-			
+			set_job_state($job_id,1);	
 			if(rmtree($content_dir.$uuid))
 			{ set_job_state($job_id,2); write_log($log_file, "deleting : ".$del_file ."success! "); }
 			else
