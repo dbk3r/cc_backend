@@ -1,1 +1,0 @@
-start perl encoder.pl
