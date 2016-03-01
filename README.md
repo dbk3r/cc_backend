@@ -31,4 +31,4 @@ I recommened to use cpan
 - DBI
 - Parallel::ForkManager
 - FindBin
-- IPC::Run qw(start pump)
+- IPC::Run
